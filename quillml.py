@@ -17,6 +17,9 @@ class StringEntry:
         else:
             return False
 
+    def to_dict(self):
+        return {'value': self.value}
+
 
 class NumberEntry:
     def __init__(self, value, dimension : str = None):
@@ -40,6 +43,12 @@ class NumberEntry:
             return True
         else:
             return False
+
+    def to_dict(self):
+        if self.dimension is not None:
+            return {'value': self.value, 'dimension' : self.dimension}
+        else:
+            return {'value': self.value}
 
 
 def parse_value(string : str):
@@ -147,6 +156,18 @@ def _get_entry_list_string_repr(d : dict, tab=0):
     return string_list
 
 
+def _to_dict_recursive(d : dict):
+    d_new = {}
+
+    for k, v in d.items():
+        if isinstance(v, dict):
+            d_new[k] = _to_dict_recursive(v)
+        else:
+            d_new[k] = v.to_dict()
+
+    return d_new
+
+
 class QuillMLFile:
     def __init__(self, filepath):
         self.filepath = filepath
@@ -167,3 +188,10 @@ class QuillMLFile:
 
     def __repr__(self):
         return '\n'.join(_get_entry_list_string_repr(self.entries))
+
+    def to_dict(self):
+        return _to_dict_recursive(self.entries)
+
+    def to_json(self):
+        import json
+        return json.dumps(self.to_dict(), indent=2)

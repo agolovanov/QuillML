@@ -1,0 +1,18 @@
+{
+  "group_name": {
+    "x": {
+      "value": 10,
+      "dimension": "um"
+    },
+    "y": {
+      "value": 50,
+      "dimension": "mm"
+    },
+    "long_variable": {
+      "value": 1000000000000.0
+    },
+    "bool_variable": {
+      "value": "False"
+    }
+  }
+}

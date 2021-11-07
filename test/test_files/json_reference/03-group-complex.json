@@ -1,0 +1,40 @@
+{
+  "x": {
+    "value": "True"
+  },
+  "group_one": {
+    "x": {
+      "value": 5,
+      "dimension": "um"
+    },
+    "subgroup_one": {
+      "x": {
+        "value": 10.3,
+        "dimension": "cm"
+      }
+    },
+    "subgroup_two": {
+      "x": {
+        "value": -100000.0,
+        "dimension": "GeV"
+      }
+    }
+  },
+  "group_two": {
+    "x": {
+      "value": 10,
+      "dimension": "um"
+    },
+    "subgroup_one": {
+      "x": {
+        "value": "nothing"
+      }
+    },
+    "subgroup_three": {
+      "x": {
+        "value": 10,
+        "dimension": "MeV"
+      }
+    }
+  }
+}
