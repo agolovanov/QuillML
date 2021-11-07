@@ -1,3 +1,5 @@
+import re
+
 class StringEntry:
     def __init__(self, value : str):
         if isinstance(value, str):
@@ -90,44 +92,51 @@ class _ParseType:
 def _parse_entry_list(lines : list[tuple[int, str]], parse_type : _ParseType):
     entries = {}
 
+    # variable name can contain letters, digits, hyphens, underscores; it must begin with a letter or underscore
+    variable_name_regex_str = r'^([\w_][\w\d\-_]*)'
+    variable_name_regex = re.compile(variable_name_regex_str)
+
+
     while True:
         line_number, line = lines[0]
+
+        m = re.match(variable_name_regex, line)
         
-        # test for ordinary variable
-        first_equal_sign = line.find('=')
-        # test for group
-        first_group_opener = line.find('{')
+        # this line is a variable
+        if m:
+            variable_name = m.group()
 
-        if first_group_opener != -1:
-            #this should be a group variable
-            variable_name = line[:first_group_opener].strip()
-            lines[0] = (line_number, line[first_group_opener+1:].strip())
-            try:
-                entry, lines = _parse_entry_list(lines, _ParseType.GROUP)
-            except QuillMLSyntaxError as err:
-                raise QuillMLSyntaxError(f'Line {line_number}: error parsing group [{variable_name}], message: {err}')
+            subline = line[len(variable_name):].strip()
+
+            # ordinary variable
+            if subline.startswith('='):
+                try:
+                    entry = parse_value(subline[1:].strip())
+                except ValueError as err:
+                    raise QuillMLSyntaxError(f'Line {line_number}: error parsing entry [{variable_name}], message {err}')
+            # group variable
+            elif subline.startswith('{'):
+                lines[0] = (line_number, subline[1:].strip())
+                try:
+                    entry, lines = _parse_entry_list(lines, _ParseType.GROUP)
+                except QuillMLSyntaxError as err:
+                    raise QuillMLSyntaxError(f'Line {line_number}: error parsing group [{variable_name}], message: {err}')
+            else:
+                raise QuillMLSyntaxError(f'Line {line_number}: unexpected symbol [{subline[0]}] \
+                                           after variable [{variable_name}], only [=] and [{{] are possible')
 
             if variable_name not in entries:
                 entries[variable_name] = entry
             else:
                 raise QuillMLSyntaxError(f'Line {line_number}: repeat variable [{variable_name}]')
-        elif first_equal_sign != -1:
-            variable_name = line[:first_equal_sign].strip()
-            try:
-                entry = parse_value(line[first_equal_sign+1:].strip())
-            except ValueError as err:
-                raise QuillMLSyntaxError(f'Line {line_number}: error parsing entry [{variable_name}], message {err}')
-
-            if variable_name not in entries:
-                entries[variable_name] = entry
-            else:
-                raise QuillMLSyntaxError(f'Line {line_number}: repeat variable [{variable_name}]')
+        # group closer
         elif line.startswith('}'):
             if parse_type == _ParseType.GROUP:
                 lines[0] = (line_number, lines[0][1][1:].strip())
                 return entries, lines
             else:
-                raise QuillMLSyntaxError('Line {line_number}: Unexpected closing "}}"')
+                raise QuillMLSyntaxError(f'Line {line_number}: Unexpected closing "}}"')
+        # something unexpected
         elif line:
             raise QuillMLSyntaxError(f'Line {line_number}: [{line}] cannot be parsed')
 
