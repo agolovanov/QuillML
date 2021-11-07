@@ -1,34 +1,20 @@
 import re
 
-class StringEntry:
-    def __init__(self, value : str):
-        if isinstance(value, str):
-            self.value = value
-        else:
-            raise ValueError(f'Value must be of str type, got {type(value)} instead')
-
-    def __repr__(self):
-        return self.value
-
-    def __eq__(self, other):
-        if isinstance(other, str):
-            if self.value == other:
-                return True
-        elif self.value == other.value:
-            return True
-        else:
-            return False
-
-    def to_dict(self):
-        return {'value': self.value}
-
-
-class NumberEntry:
+class SingleEntry:
+    """
+    A single entry consists of a value and a dimension, e.g. "20 um".
+    The dimension cannot exist for string values.
+    """
     def __init__(self, value, dimension : str = None):
-        if isinstance(value, int) or isinstance(value, float):
+        if isinstance(value, str):
+            if dimension is None:
+                self.value = value
+            else:
+                raise ValueError(f"String values cannot have a dimension, got [{dimension}]")
+        elif isinstance(value, int) or isinstance(value, float):
             self.value = value
         else:
-            raise ValueError(f'Value must be of int or float type, got {type(value)} instead')
+            raise ValueError(f'Got unexpected type {type(value)}')
         if dimension is None or isinstance(dimension, str):
             self.dimension = dimension
         else:
@@ -41,7 +27,10 @@ class NumberEntry:
             return f'{self.value}'
 
     def __eq__(self, other):
-        if self.value == other.value and self.dimension == other.dimension:
+        if isinstance(other, str):
+            if self.value == other:
+                return True
+        elif self.value == other.value and self.dimension == other.dimension:
             return True
         else:
             return False
@@ -51,6 +40,29 @@ class NumberEntry:
             return {'value': self.value, 'dimension' : self.dimension}
         else:
             return {'value': self.value}
+
+
+class GroupEntry:
+    """
+    A group entry is an entry containing multiple other entries with unique names.
+    """
+    def __init__(self, value : dict):
+        self.value = value
+
+    def __getitem__(self, index):
+        return self.value[index]
+
+    def __setitem__(self, index, value):
+        self.value[index] = value
+
+    def __contains__(self, index):
+        return index in self.value
+
+    def items(self):
+        return self.value.items()
+
+    def to_dict(self):
+        return {k: self.value[k].to_dict() for k in self.value}
 
 
 def parse_value(string : str):
@@ -72,11 +84,11 @@ def parse_value(string : str):
     
     if isinstance(value, str):
         if dimension is None:
-            return StringEntry(value)
+            return SingleEntry(value)
         else:
             raise ValueError(f"String [{string}] has str value [{value}] but also has dimension [{dimension}]")
     else:
-        return NumberEntry(value, dimension)
+        return SingleEntry(value, dimension)
 
 
 class QuillMLSyntaxError(Exception):
@@ -90,7 +102,7 @@ class _ParseType:
 
 
 def _parse_entry_list(lines : list[tuple[int, str]], parse_type : _ParseType):
-    entries = {}
+    entries = GroupEntry({})
 
     # variable name can contain letters, digits, hyphens, underscores; it must begin with a letter or underscore
     variable_name_regex_str = r'^([\w_][\w\d\-_]*)'
@@ -99,8 +111,6 @@ def _parse_entry_list(lines : list[tuple[int, str]], parse_type : _ParseType):
 
     while True:
         line_number, line = lines[0]
-
-        print(f'Line {line_number}: {line}')
 
         m = re.match(variable_name_regex, line)
         
@@ -122,7 +132,6 @@ def _parse_entry_list(lines : list[tuple[int, str]], parse_type : _ParseType):
                     lines.pop(0)
                 try:
                     entry = parse_value(value)
-                    print(f'Set [{variable_name}] to [{entry}]')
                 except ValueError as err:
                     raise QuillMLSyntaxError(f'Line {line_number}: error parsing entry [{variable_name}], message {err}')
             # group variable
@@ -130,7 +139,6 @@ def _parse_entry_list(lines : list[tuple[int, str]], parse_type : _ParseType):
                 lines[0] = (line_number, subline[1:].strip())
                 try:
                     entry, lines = _parse_entry_list(lines, _ParseType.GROUP)
-                    print(f'Set [{variable_name}] to [{entry}]')
                 except QuillMLSyntaxError as err:
                     raise QuillMLSyntaxError(f'Line {line_number}: error parsing group [{variable_name}], message: {err}')
             else:
@@ -145,7 +153,6 @@ def _parse_entry_list(lines : list[tuple[int, str]], parse_type : _ParseType):
         elif line.startswith('}'):
             if parse_type == _ParseType.GROUP:
                 lines[0] = (line_number, line[1:].strip())
-                print(f'Remaining lines are: {lines}')
                 return entries, lines
             else:
                 raise QuillMLSyntaxError(f'Line {line_number}: Unexpected closing "}}"')
@@ -163,12 +170,12 @@ def _parse_entry_list(lines : list[tuple[int, str]], parse_type : _ParseType):
 
     
 
-def _get_entry_list_string_repr(d : dict, tab=0):
+def _get_entry_list_string_repr(d : GroupEntry, tab=0):
     string_list = []
     prefix = ' ' * tab
 
     for k, v in d.items():
-        if isinstance(v, dict):
+        if isinstance(v, GroupEntry):
             string_list.append(f'{prefix}{k} {{')
             string_list += _get_entry_list_string_repr(v, tab+2)
             string_list.append(f'{prefix}}}')
@@ -176,19 +183,6 @@ def _get_entry_list_string_repr(d : dict, tab=0):
             string_list.append(f'{prefix}{k} = {v}')
 
     return string_list
-
-
-def _to_dict_recursive(d : dict):
-    d_new = {}
-
-    for k, v in d.items():
-        if isinstance(v, dict):
-            d_new[k] = _to_dict_recursive(v)
-        else:
-            d_new[k] = v.to_dict()
-
-    return d_new
-
 
 class QuillMLFile:
     def __init__(self, filepath):
@@ -212,7 +206,7 @@ class QuillMLFile:
         return '\n'.join(_get_entry_list_string_repr(self.entries))
 
     def to_dict(self):
-        return _to_dict_recursive(self.entries)
+        return self.entries.to_dict()
 
     def to_json(self):
         import json
