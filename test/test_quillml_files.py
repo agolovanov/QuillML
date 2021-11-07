@@ -31,3 +31,11 @@ def test_basic_repeat():
     with pytest.raises(quillml.QuillMLSyntaxError) as excinfo:
         f = quillml.QuillMLFile(os.path.join(dirname, 'test_files/02-basic-repeat.quillml'))
     assert "repeat variable [x]" in str(excinfo.value)
+
+def test_group():
+    f = quillml.QuillMLFile(os.path.join(dirname, 'test_files/03-group-basic.quillml'))
+
+    assert f['group_name']['x'] == quillml.parse_value('10 um')
+    assert f['group_name']['y'] == quillml.parse_value('50 mm')
+    assert f['group_name']['long_variable'] == quillml.parse_value('1e12')
+    assert f['group_name']['bool_variable'] == 'False'

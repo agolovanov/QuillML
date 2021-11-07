@@ -1,0 +1,22 @@
+x = True
+
+# this is a group
+group_one { # comment here
+    x = 5 um
+    subgroup_one {
+        x = 10.3 cm # not interesting
+    }
+    subgroup_two {
+        x = -1e5 GeV
+    }
+}
+
+group_two {
+    x = 10 um
+    subgroup_one {
+        x = nothing
+    }
+    subgroup_three {
+        x = 10 MeV
+    }
+}

@@ -8,6 +8,15 @@ class StringEntry:
     def __repr__(self):
         return self.value
 
+    def __eq__(self, other):
+        if isinstance(other, str):
+            if self.value == other:
+                return True
+        elif self.value == other.value:
+            return True
+        else:
+            return False
+
 
 class NumberEntry:
     def __init__(self, value, dimension : str = None):
@@ -25,6 +34,12 @@ class NumberEntry:
             return f'{self.value} {self.dimension}'
         else:
             return f'{self.value}'
+
+    def __eq__(self, other):
+        if self.value == other.value and self.dimension == other.dimension:
+            return True
+        else:
+            return False
 
 
 def parse_value(string : str):
@@ -58,7 +73,12 @@ class QuillMLSyntaxError(Exception):
         super().__init__(message)
 
 
-def _parse_entry_list(lines : list[tuple[int, str]], stopping_condition):
+class _ParseType:
+    FULL = 0
+    GROUP = 1
+
+
+def _parse_entry_list(lines : list[tuple[int, str]], parse_type : _ParseType):
     entries = {}
 
     while True:
@@ -66,29 +86,63 @@ def _parse_entry_list(lines : list[tuple[int, str]], stopping_condition):
         
         # test for ordinary variable
         first_equal_sign = line.find('=')
-        if first_equal_sign != -1:
-            variable_name = line[:first_equal_sign].strip()
-            entry = parse_value(line[first_equal_sign+1:].strip())
+        # test for group
+        first_group_opener = line.find('{')
+
+        if first_group_opener != -1:
+            #this should be a group variable
+            variable_name = line[:first_group_opener].strip()
+            lines[0] = (line_number, line[first_group_opener+1:].strip())
+            try:
+                entry, lines = _parse_entry_list(lines, _ParseType.GROUP)
+            except QuillMLSyntaxError as err:
+                raise QuillMLSyntaxError(f'Line {line_number}: error parsing group [{variable_name}], message: {err}')
 
             if variable_name not in entries:
                 entries[variable_name] = entry
             else:
                 raise QuillMLSyntaxError(f'Line {line_number}: repeat variable [{variable_name}]')
+        elif first_equal_sign != -1:
+            variable_name = line[:first_equal_sign].strip()
+            try:
+                entry = parse_value(line[first_equal_sign+1:].strip())
+            except ValueError as err:
+                raise QuillMLSyntaxError(f'Line {line_number}: error parsing entry [{variable_name}], message {err}')
+
+            if variable_name not in entries:
+                entries[variable_name] = entry
+            else:
+                raise QuillMLSyntaxError(f'Line {line_number}: repeat variable [{variable_name}]')
+        elif line.startswith('}'):
+            if parse_type == _ParseType.GROUP:
+                lines[0] = (line_number, lines[0][1][1:].strip())
+                return entries, lines
+            else:
+                raise QuillMLSyntaxError('Line {line_number}: Unexpected closing "}}"')
         elif line:
             raise QuillMLSyntaxError(f'Line {line_number}: [{line}] cannot be parsed')
 
         lines.pop(0)
 
         if len(lines) == 0:
-            break
+            if parse_type == _ParseType.FULL:
+                return entries, lines
+            elif parse_type == _ParseType.GROUP:
+                raise QuillMLSyntaxError('Unexpected end of file before closing "}"')
 
-    return entries, lines
+    
 
-def _get_entry_list_string_repr(d : dict):
+def _get_entry_list_string_repr(d : dict, tab=0):
     string_list = []
+    prefix = ' ' * tab
 
     for k, v in d.items():
-        string_list.append(f'{k} = {v}')
+        if isinstance(v, dict):
+            string_list.append(f'{prefix}{k} {{')
+            string_list += _get_entry_list_string_repr(v, tab+2)
+            string_list.append(f'{prefix}}}')
+        else:
+            string_list.append(f'{prefix}{k} = {v}')
 
     return string_list
 
@@ -106,11 +160,10 @@ class QuillMLFile:
 
         lines = list(enumerate(lines, 1))
 
-        self.entries = _parse_entry_list(lines, None)[0]
+        self.entries = _parse_entry_list(lines, _ParseType.FULL)[0]
 
     def __getitem__(self, key):
         return self.entries[key]
 
     def __repr__(self):
-        filepath_str = f'QuillML file [{self.filepath}]'
-        return '\n'.join([filepath_str] + _get_entry_list_string_repr(self.entries))
+        return '\n'.join(_get_entry_list_string_repr(self.entries))

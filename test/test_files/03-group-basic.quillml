@@ -1,0 +1,6 @@
+group_name {
+    x = 10 um
+    y = 50 mm
+    long_variable = 1e12
+    bool_variable = False
+}
