@@ -1,0 +1,15 @@
+particles_per_cell = 8
+lambda = 1 um
+nplasm = 1e18 1/cm^3
+particle_pusher = boris
+
+box_size = [100, 60, 60]
+x_coordinates = [0, 2.5, 4.5] cm
+particles = [electron, positron, photon]
+
+beam {
+    species = electron
+    particles_per_cell = [2, 2, 1]
+    envelope { type = gaussian; center = [40, 20, 20] um; size = [10, 2, 2] um; }
+    pusher = boris
+}

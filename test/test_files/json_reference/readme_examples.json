@@ -1,0 +1,74 @@
+{
+  "particles_per_cell": {
+    "value": 8
+  },
+  "lambda": {
+    "value": 1,
+    "dimension": "um"
+  },
+  "nplasm": {
+    "value": 1e+18,
+    "dimension": "1/cm^3"
+  },
+  "particle_pusher": {
+    "value": "boris"
+  },
+  "box_size": {
+    "value": [
+      100,
+      60,
+      60
+    ]
+  },
+  "x_coordinates": {
+    "value": [
+      0.0,
+      2.5,
+      4.5
+    ],
+    "dimension": "cm"
+  },
+  "particles": {
+    "value": [
+      "electron",
+      "positron",
+      "photon"
+    ]
+  },
+  "beam": {
+    "species": {
+      "value": "electron"
+    },
+    "particles_per_cell": {
+      "value": [
+        2,
+        2,
+        1
+      ]
+    },
+    "envelope": {
+      "type": {
+        "value": "gaussian"
+      },
+      "center": {
+        "value": [
+          40,
+          20,
+          20
+        ],
+        "dimension": "um"
+      },
+      "size": {
+        "value": [
+          10,
+          2,
+          2
+        ],
+        "dimension": "um"
+      }
+    },
+    "pusher": {
+      "value": "boris"
+    }
+  }
+}
