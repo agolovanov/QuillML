@@ -32,6 +32,7 @@ def test_basic_repeat():
         f = quillml.QuillMLFile(os.path.join(dirname, 'test_files/02-basic-repeat.quillml'))
     assert "repeat variable [x]" in str(excinfo.value)
 
+
 def test_group():
     f = quillml.QuillMLFile(os.path.join(dirname, 'test_files/03-group-basic.quillml'))
 

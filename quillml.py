@@ -6,7 +6,22 @@ class SingleEntry:
     The dimension cannot exist for string values.
     """
     def __init__(self, value, dimension : str = None):
-        if isinstance(value, str):
+        if isinstance(value, list):
+            valid_types = (int, float, str)
+            array_type = None
+            for t in valid_types:
+                if all([isinstance(v, t) for v in value]):
+                    array_type = t
+            if array_type == str:
+                if dimension is None:
+                    self.value = value
+                else:
+                    raise ValueError(f'Arrays of string values cannot have a dimension, got [{dimension}]')
+            elif array_type:
+                self.value = value
+            else:
+                raise ValueError(f'Array [{value}] does not have permitted homogeneous types')
+        elif isinstance(value, str):
             if dimension is None:
                 self.value = value
             else:
@@ -21,15 +36,28 @@ class SingleEntry:
             raise ValueError(f'Dimension must be of str type, got {type(dimension)} instead')
 
     def __repr__(self):
-        if self.dimension is not None:
-            return f'{self.value} {self.dimension}'
+        if isinstance(self.value, list):
+            value_str = '[' + ', '.join([str(s) for s in self.value]) + ']'
         else:
-            return f'{self.value}'
+            value_str = self.value
+        if self.dimension is not None:
+            return f'{value_str} {self.dimension}'
+        else:
+            return f'{value_str}'
 
     def __eq__(self, other):
         if isinstance(other, str):
             if self.value == other:
                 return True
+        elif isinstance(other, list):
+            if self.dimension != other.dimension:
+                return False
+            if len(self.value) != len(other):
+                return False
+            for i in range(len(other)):
+                if self.value[i] != other[i]:
+                    return False
+            return True
         elif self.value == other.value and self.dimension == other.dimension:
             return True
         else:
@@ -67,20 +95,52 @@ class GroupEntry:
 
 def parse_value(string : str):
     string = string.strip()
-    last_space = string.rfind(' ')
-    if last_space != -1:
-        dimension = string[last_space + 1:]
-        value_str = string[:last_space].strip()
-    else:
-        dimension = None
-        value_str = string
-    try:
-        value = int(value_str)
-    except:
+
+    # array value
+    if string.startswith('['):
+        pos = string.find(']')
+        array_strings = [s.strip() for s in string[1:pos].split(',')]
+        array_type = None
         try:
-            value = float(value_str)
+            value = [int(s) for s in array_strings]
+            array_type = int
         except:
-            value = value_str
+            try:
+                value = [float(s) for s in array_strings]
+                array_type = float
+            except:
+                value = array_strings
+                array_type = str
+        
+        dimension = string[pos+1:].strip()
+        if not dimension:
+            dimension = None
+        
+        if array_type == str:
+            if dimension is None:
+                return SingleEntry(value)
+            else:
+                raise ValueError(f"Array [{value}] is array of strings and is not allowed to have a dimension [{dimension}]")
+        else:
+            return SingleEntry(value, dimension)
+
+
+    # scalar value
+    else:
+        last_space = string.rfind(' ')
+        if last_space != -1:
+            dimension = string[last_space + 1:]
+            value_str = string[:last_space].strip()
+        else:
+            dimension = None
+            value_str = string
+        try:
+            value = int(value_str)
+        except:
+            try:
+                value = float(value_str)
+            except:
+                value = value_str
     
     if isinstance(value, str):
         if dimension is None:
