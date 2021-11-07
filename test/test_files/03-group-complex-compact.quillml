@@ -1,0 +1,4 @@
+x = True
+#these are very compact groups
+group_one { x = 5 um; subgroup_one { x = 10.3 cm; } subgroup_two { x = -1e5 GeV; }}
+group_two{x=10 um;subgroup_one{x=nothing;}subgroup_three{x = 10 MeV;}}

@@ -100,6 +100,8 @@ def _parse_entry_list(lines : list[tuple[int, str]], parse_type : _ParseType):
     while True:
         line_number, line = lines[0]
 
+        print(f'Line {line_number}: {line}')
+
         m = re.match(variable_name_regex, line)
         
         # this line is a variable
@@ -110,8 +112,17 @@ def _parse_entry_list(lines : list[tuple[int, str]], parse_type : _ParseType):
 
             # ordinary variable
             if subline.startswith('='):
+                p = subline.find(';')
+                # additional entries on the same line
+                if p != -1:
+                    lines[0] = (line_number, subline[p+1:].strip())
+                    value = subline[1:p].strip()
+                else:
+                    value = subline[1:].strip()
+                    lines.pop(0)
                 try:
-                    entry = parse_value(subline[1:].strip())
+                    entry = parse_value(value)
+                    print(f'Set [{variable_name}] to [{entry}]')
                 except ValueError as err:
                     raise QuillMLSyntaxError(f'Line {line_number}: error parsing entry [{variable_name}], message {err}')
             # group variable
@@ -119,6 +130,7 @@ def _parse_entry_list(lines : list[tuple[int, str]], parse_type : _ParseType):
                 lines[0] = (line_number, subline[1:].strip())
                 try:
                     entry, lines = _parse_entry_list(lines, _ParseType.GROUP)
+                    print(f'Set [{variable_name}] to [{entry}]')
                 except QuillMLSyntaxError as err:
                     raise QuillMLSyntaxError(f'Line {line_number}: error parsing group [{variable_name}], message: {err}')
             else:
@@ -132,15 +144,16 @@ def _parse_entry_list(lines : list[tuple[int, str]], parse_type : _ParseType):
         # group closer
         elif line.startswith('}'):
             if parse_type == _ParseType.GROUP:
-                lines[0] = (line_number, lines[0][1][1:].strip())
+                lines[0] = (line_number, line[1:].strip())
+                print(f'Remaining lines are: {lines}')
                 return entries, lines
             else:
                 raise QuillMLSyntaxError(f'Line {line_number}: Unexpected closing "}}"')
         # something unexpected
         elif line:
             raise QuillMLSyntaxError(f'Line {line_number}: [{line}] cannot be parsed')
-
-        lines.pop(0)
+        else:
+            lines.pop(0)
 
         if len(lines) == 0:
             if parse_type == _ParseType.FULL:

@@ -5,7 +5,7 @@ dirname = os.path.dirname(__file__)
 
 
 def test_basic():
-    filepaths = ['test_files/01-basic.quillml', 'test_files/01-basic-comment-whitespace.quillml']
+    filepaths = ['test_files/01-basic.quillml', 'test_files/01-basic-comment-whitespace.quillml', 'test_files/01-basic-sameline.quillml',]
 
     for filepath in filepaths:
         f = quillml.QuillMLFile(os.path.join(dirname, filepath))
