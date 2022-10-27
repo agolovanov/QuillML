@@ -1,5 +1,7 @@
 # QuillML
 
+[![Tests](../../actions/workflows/tests.yml/badge.svg)](../../actions/workflows/tests.yml)
+
 **QuillML** is a simple markup language specifically designed to make writing configuration files for particle-in-cell (PIC) codes easier.
 It is a side project to the PIC code Quill (https://github.com/QUILL-PIC/Quill), but it can be used completely independently.
 
